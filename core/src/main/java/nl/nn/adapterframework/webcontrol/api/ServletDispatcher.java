@@ -28,6 +28,7 @@ import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
+import org.apache.cxf.Bus;
 import org.apache.cxf.transport.servlet.CXFServlet;
 import org.apache.logging.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -50,7 +51,7 @@ import nl.nn.adapterframework.util.LogUtil;
 @IbisInitializer
 public class ServletDispatcher extends CXFServlet implements DynamicRegistration.ServletWithParameters {
 
-	private static final long serialVersionUID = 1L;
+	private static final long serialVersionUID = 2L;
 
 	private Logger secLog = LogUtil.getLogger("SEC");
 	private Logger log = LogUtil.getLogger(this);
@@ -152,10 +153,20 @@ public class ServletDispatcher extends CXFServlet implements DynamicRegistration
 	}
 
 	@Override
-	public void onApplicationEvent(ContextRefreshedEvent event) {
-		if(getBus() != null) {
-			super.onApplicationEvent(event);
+	public void setBus(Bus bus) {
+		if(bus != null) {
+			log.debug("Successfully created IAF-API with SpringBus ["+bus.getId()+"]");
+			getServletContext().log("Successfully created IAF-API with SpringBus ["+bus.getId()+"]");
 		}
+
+		super.setBus(bus);
+	}
+
+	@Override
+	public void onApplicationEvent(ContextRefreshedEvent event) {
+		// This event listens to all Spring refresh events.
+		// When adding new Spring contexts (with this as a parent) refresh events originating from other contexts will also trigger this method.
+		// Since we never want to reinitialize this servlet, we can ignore the 'refresh' event completely!
 	}
 
 	@Override
@@ -165,7 +176,7 @@ public class ServletDispatcher extends CXFServlet implements DynamicRegistration
 
 	@Override
 	public int loadOnStartUp() {
-		return -1;
+		return 0;
 	}
 
 	@Override
@@ -185,7 +196,6 @@ public class ServletDispatcher extends CXFServlet implements DynamicRegistration
 
 	@Override
 	public String getUrlMapping() {
-		// TODO Auto-generated method stub
 		return "iaf/api/*";
 	}
 
@@ -194,6 +204,7 @@ public class ServletDispatcher extends CXFServlet implements DynamicRegistration
 	public Map<String, String> getParameters() {
 		Map<String, String> parameters = new HashMap<>();
 		parameters.put("config-location", "FrankFrameworkApiContext.xml");
+		parameters.put("bus", "ff-api-bus");
 		return parameters;
 	}
 }

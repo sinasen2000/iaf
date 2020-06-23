@@ -90,9 +90,9 @@ public class TransactionalStorage extends Base {
 		//StorageType
 		IMessageBrowser storage;
 		if(storageType.equals("messagelog"))
-			storage = receiver.getMessageLog();
+			storage = receiver.getMessageLogBrowser();
 		else
-			storage = receiver.getErrorStorage();
+			storage = receiver.getErrorStorageBrowser();
 
 		return getMessage(storage, receiver.getListener(), messageId);
 	}
@@ -122,9 +122,9 @@ public class TransactionalStorage extends Base {
 		//StorageType
 		IMessageBrowser storage;
 		if(storageType.equals("messagelog"))
-			storage = receiver.getMessageLog();
+			storage = receiver.getMessageLogBrowser();
 		else
-			storage = receiver.getErrorStorage();
+			storage = receiver.getErrorStorageBrowser();
 
 		return getMessage(storage, receiver.getListener(), messageId);
 	}
@@ -166,9 +166,9 @@ public class TransactionalStorage extends Base {
 		//StorageType
 		IMessageBrowser storage;
 		if(storageType.equals("messagelog"))
-			storage = receiver.getMessageLog();
+			storage = receiver.getMessageLogBrowser();
 		else
-			storage = receiver.getErrorStorage();
+			storage = receiver.getErrorStorageBrowser();
 
 		if(storage == null) {
 			throw new ApiException("no IMessageBrowser found");
@@ -290,7 +290,7 @@ public class TransactionalStorage extends Base {
 			throw new ApiException("Receiver ["+receiverName+"] not found!");
 		}
 
-		deleteMessage(receiver.getErrorStorage(), messageId);
+		deleteMessage(receiver.getErrorStorageBrowser(), messageId);
 
 		return Response.status(Response.Status.OK).build();
 	}
@@ -323,7 +323,7 @@ public class TransactionalStorage extends Base {
 		List<String> errorMessages = new ArrayList<String>();
 		for(int i=0; i < messageIds.length; i++) {
 			try {
-				deleteMessage(receiver.getErrorStorage(), messageIds[i]);
+				deleteMessage(receiver.getErrorStorageBrowser(), messageIds[i]);
 			}
 			catch(Exception e) {
 				if(e instanceof ApiException) {
@@ -499,12 +499,16 @@ public class TransactionalStorage extends Base {
 		String msg = null;
 		if (rawmsg != null) {
 			if(rawmsg instanceof MessageWrapper) {
-				MessageWrapper msgsgs = (MessageWrapper) rawmsg;
-				msg = msgsgs.getText();
+				try {
+					MessageWrapper msgsgs = (MessageWrapper) rawmsg;
+					msg = msgsgs.getMessage().asString();
+				} catch (IOException e) {
+					throw new ApiException(e, 500);
+				}
 			} else {
 				try {
 					if (listener!=null) {
-						msg = listener.getStringFromRawMessage(rawmsg, null);
+						msg = listener.extractMessage(rawmsg, null).asString();
 					} 
 				} catch (Exception e) {
 					log.warn("Exception reading value raw message", e);
@@ -573,6 +577,7 @@ public class TransactionalStorage extends Base {
 	
 				int count;
 				List<Object> messages = new LinkedList<Object>();
+				
 				for (count=0; iterator.hasNext(); ) {
 					IMessageBrowsingIteratorItem iterItem = iterator.next();
 					try {
@@ -740,7 +745,7 @@ public class TransactionalStorage extends Base {
 				Object rawmsg = storage.browseMessage(iterItem.getId());
 				String msg = null;
 				if (listener != null) {
-					msg = listener.getStringFromRawMessage(rawmsg, new HashMap<String, Object>());
+					msg = listener.extractMessage(rawmsg, new HashMap<String, Object>()).asString();
 				} else {
 					msg = Message.asString(rawmsg);
 				}

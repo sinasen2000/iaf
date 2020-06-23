@@ -25,6 +25,8 @@ import nl.nn.adapterframework.configuration.ConfigurationException;
 import nl.nn.adapterframework.configuration.ConfigurationWarning;
 import nl.nn.adapterframework.configuration.ConfigurationWarnings;
 import nl.nn.adapterframework.core.HasPhysicalDestination;
+import nl.nn.adapterframework.core.IMessageBrowser;
+import nl.nn.adapterframework.core.IProvidesMessageBrowsers;
 import nl.nn.adapterframework.core.IPullingListener;
 import nl.nn.adapterframework.core.ListenerException;
 import nl.nn.adapterframework.core.PipeLineExit;
@@ -32,10 +34,10 @@ import nl.nn.adapterframework.core.PipeLineResult;
 import nl.nn.adapterframework.core.PipeLineSessionBase;
 import nl.nn.adapterframework.doc.IbisDoc;
 import nl.nn.adapterframework.receivers.MessageWrapper;
+import nl.nn.adapterframework.stream.Message;
 import nl.nn.adapterframework.util.ClassUtils;
 import nl.nn.adapterframework.util.DateUtils;
 import nl.nn.adapterframework.util.LogUtil;
-import nl.nn.adapterframework.util.StreamUtil;
 
 /**
  * {@link IPullingListener listener} that looks in a {@link IBasicFileSystem FileSystem} for files.
@@ -45,7 +47,7 @@ import nl.nn.adapterframework.util.StreamUtil;
  *
  * @author Gerrit van Brakel
  */
-public abstract class FileSystemListener<F, FS extends IBasicFileSystem<F>> implements IPullingListener<F>, HasPhysicalDestination {
+public abstract class FileSystemListener<F, FS extends IBasicFileSystem<F>> implements IPullingListener<F>, HasPhysicalDestination, IProvidesMessageBrowsers<F> {
 	protected Logger log = LogUtil.getLogger(this);
 
 	private String name;
@@ -237,22 +239,22 @@ public abstract class FileSystemListener<F, FS extends IBasicFileSystem<F>> impl
 	 * Returns returns the filename, or the contents
 	 */
 	@Override
-	public String getStringFromRawMessage(F rawMessage, Map<String,Object> threadContext) throws ListenerException {
+	public Message extractMessage(F rawMessage, Map<String,Object> threadContext) throws ListenerException {
 		try {
 			if (StringUtils.isEmpty(getMessageType()) || getMessageType().equalsIgnoreCase("name")) {
-				return getFileSystem().getName(rawMessage);
+				return new Message(getFileSystem().getName(rawMessage));
 			}
 			if (StringUtils.isEmpty(getMessageType()) || getMessageType().equalsIgnoreCase("path")) {
-				return getFileSystem().getCanonicalName(rawMessage);
+				return new Message(getFileSystem().getCanonicalName(rawMessage));
 			}
 			if (getMessageType().equalsIgnoreCase("contents")) {
-				return StreamUtil.streamToString(getFileSystem().readFile(rawMessage), null, StreamUtil.DEFAULT_INPUT_STREAM_ENCODING);
+				return new Message(getFileSystem().readFile(rawMessage));
 			}
 			Map<String,Object> attributes = getFileSystem().getAdditionalFileProperties(rawMessage);
 			if (attributes!=null) {
 				Object result=attributes.get(getMessageType());
 				if (result!=null) {
-					return result.toString();
+					return Message.asMessage(result);
 				}
 			}
 			log.warn("no attribute ["+getMessageType()+"] found for file ["+getFileSystem().getName(rawMessage)+"]");
@@ -284,6 +286,21 @@ public abstract class FileSystemListener<F, FS extends IBasicFileSystem<F>> impl
 		}
 	}
 
+	@Override
+	public IMessageBrowser<F> getMessageLogBrowser() {
+		if (StringUtils.isEmpty(getProcessedFolder())) {
+			return null;
+		}
+		return new FileSystemMessageBrowser<F, FS>(fileSystem, getProcessedFolder());
+	}
+	
+	@Override
+	public IMessageBrowser<F> getErrorStoreBrowser() {
+		if (StringUtils.isEmpty(getErrorFolder())) {
+			return null;
+		}
+		return new FileSystemMessageBrowser<F, FS>(fileSystem, getErrorFolder());
+	}
 
 
 
