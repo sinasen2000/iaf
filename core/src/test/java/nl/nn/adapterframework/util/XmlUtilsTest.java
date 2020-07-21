@@ -7,6 +7,8 @@ import javax.xml.transform.TransformerException;
 import org.junit.Test;
 import org.xml.sax.SAXException;
 
+import static org.junit.Assert.assertEquals;
+
 import nl.nn.adapterframework.configuration.ConfigurationException;
 
 public class XmlUtilsTest extends FunctionalTransformerPoolTestBase {
@@ -100,6 +102,62 @@ public class XmlUtilsTest extends FunctionalTransformerPoolTestBase {
 		testRemoveUnusedNamespaces("<root xmlns:xx=\"xyz\"><a>a</a><b></b><xx:c/></root>","<?xml version=\"1.0\" encoding=\"UTF-8\"?><root>"+lineSeparator+"<a>a</a>"+lineSeparator+"<b/>"+lineSeparator+"<c xmlns=\"xyz\"/>"+lineSeparator+"</root>",false,true);
 		testRemoveUnusedNamespaces("<root xmlns:xx=\"xyz\"><a>a</a><b></b><xx:c/></root>","<root><a>a</a><b/><c xmlns=\"xyz\"/></root>",true,false);
 		testRemoveUnusedNamespaces("<root xmlns:xx=\"xyz\"><a>a</a><b></b><xx:c/></root>","<root>"+lineSeparator+"<a>a</a>"+lineSeparator+"<b/>"+lineSeparator+"<c xmlns=\"xyz\"/>"+lineSeparator+"</root>",true,true);
+
+	}
+
+	@Test
+	public void testMakeDetectXsltVersionXslt(){
+		String s = XmlUtils.makeDetectXsltVersionXslt();
+		assertEquals("<xsl:stylesheet xmlns:xsl=\"http://www.w3.org/1999/XSL/Transform\" version=\"2.0\"><xsl:output method=\"text\"/><xsl:template match=\"/\"><xsl:value-of select=\"xsl:stylesheet/@version\"/></xsl:template></xsl:stylesheet>", s);
+	}
+
+	@Test
+	public void testGetDetectXsltVersionTransformerPool() throws Exception{
+		TransformerPool tp = XmlUtils.getDetectXsltVersionTransformerPool();
+		testTransformerPool(tp, "<xx:root xmlns:xx=\"xyz\"><a xmlns=\"xyz\">a</a><b></b><c/></xx:root>", "");
+		assertEquals("text", tp.getOutputMethod());
+	}
+
+	@Test
+	public void testSkipXMLDeclaration(){
+		String s = XmlUtils.skipXmlDeclaration("<?xml version=\"1.0\" encoding=\"UTF-8\"?><root xmlns=\"xyz\"><a>a</a><b/><c/></root>");
+		assertEquals("<root xmlns=\"xyz\"><a>a</a><b/><c/></root>", s);
+	}
+	@Test
+	public void testSkipDocTypeDeclaration(){
+		String s = XmlUtils.skipDocTypeDeclaration(
+				"<!DOCTYPE note SYSTEM \"Note.dtd\">\n" + "<note>\n" + "<to>Tove</to>\n" +
+				"<from>Jani</from>\n" + "<heading>Reminder</heading>\n" + "<body>Don't forget me this weekend!</body>\n" +
+				"</note>");
+		assertEquals("<note>\n" + "<to>Tove</to>\n" + "<from>Jani</from>\n" + "<heading>Reminder</heading>\n" +
+				"<body>Don't forget me this weekend!</body>\n" +
+				"</note>", s);
+	}
+
+	@Test
+	public void testReadXmlSkipDeclaration() throws Exception{
+		String s = "<?xml version=\"1.0\" encoding=\"UTF-8\"?><root xmlns=\"xyz\"><a>a</a><b/><c/></root>";
+		byte[] arr = s.getBytes();
+		String res = XmlUtils.readXml(arr, "", true);
+		assertEquals("<root xmlns=\"xyz\"><a>a</a><b/><c/></root>", res);
+	}
+
+	@Test
+	public void testReadXMLDefaultEncoding() throws Exception{
+		String s = "<?xml version=\"1.0\"?><root xmlns=\"xyz\"><a>a</a><b/><c/></root>";
+		byte[] arr = s.getBytes();
+		String res = XmlUtils.readXml(arr, "utf-8", true);
+		String resUtf16 = XmlUtils.readXml(arr, "utf-16", true);
+		assertEquals("<root xmlns=\"xyz\"><a>a</a><b/><c/></root>", res);
+		assertEquals("㰿硭氠癥牳楯渽∱⸰∿㸼牯潴⁸浬湳㴢硹稢㸼愾愼⽡㸼戯㸼振㸼⽲潯琾", resUtf16);
+	}
+
+	@Test
+	public void testReadXMLwithOffsetLength() throws Exception{
+		String s = "<?xml version=\"1.0\"?><root xmlns=\"xyz\"><a>a</a><b/><c/></root>";
+		byte[] arr = s.getBytes();
+		String res = XmlUtils.readXml(arr, 6, 25, "", true, false);
+		assertEquals("version=\"1.0\"?><root xmln", res);
 
 	}
 
