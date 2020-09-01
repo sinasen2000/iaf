@@ -66,6 +66,10 @@ public class GenericDbmsSupport implements IDbmsSupport {
 	public String getSysDate() {
 		return "NOW()";
 	}
+	@Override
+	public String getDateAndOffset(String dateValue, int daysOffset) {
+		return dateValue+ " + "+daysOffset;
+	}
 
 	@Override
 	public String getNumericKeyFieldType() {
@@ -104,7 +108,7 @@ public class GenericDbmsSupport implements IDbmsSupport {
 
 	@Override
 	public String getIbisStoreSummaryQuery() {
-		// include a where clause, to make MsSqlServerDbmsSupport.prepareQueryTextForDirtyRead() work
+		// include a where clause, to make MsSqlServerDbmsSupport.prepareQueryTextForNonLockingRead() work
 		return "select type, slotid, " + getTimestampAsDate("MESSAGEDATE")+ " msgdate, count(*) msgcount from IBISSTORE where 1=1 group by slotid, type, " + getTimestampAsDate("MESSAGEDATE")+ " order by type, slotid, " + getTimestampAsDate("MESSAGEDATE");
 	}
 
@@ -280,11 +284,11 @@ public class GenericDbmsSupport implements IDbmsSupport {
 	} 
 
 	@Override
-	public String prepareQueryTextForDirtyRead(String selectQuery) throws JdbcException {
+	public String prepareQueryTextForNonLockingRead(String selectQuery) throws JdbcException {
 		return selectQuery;
 	}
 	@Override
-	public JdbcSession prepareSessionForDirtyRead(Connection conn) throws JdbcException {
+	public JdbcSession prepareSessionForNonLockingRead(Connection conn) throws JdbcException {
 		return null;
 	}
 
