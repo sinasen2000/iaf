@@ -758,8 +758,8 @@ angular.module('iaf.beheerconsole')
 	authService.logout();
 }])
 
-.controller('LoginCtrl', ['$scope', 'authService', '$timeout', 'appConstants', 'Alert', '$interval', 'Toastr', 
-	function($scope, authService, $timeout, appConstants, Alert, $interval, Toastr) {
+.controller('LoginCtrl', ['$scope', 'authService', '$timeout', 'Alert', 
+	function($scope, authService, $timeout, Alert) {
 	$timeout(function() {
 		$scope.notifications = Alert.get();
 		angular.element(".main").show();
@@ -1648,7 +1648,7 @@ angular.module('iaf.beheerconsole')
 }])
 
 .controller('WebservicesCtrl', ['$scope', 'Api', 'Misc', function($scope, Api, Misc) {
-	$scope.rootURL = Misc.getServerPath() + 'rest/';
+	$scope.rootURL = Misc.getServerPath();
 	Api.Get("webservices", function(data) {
 		$.extend($scope, data);
 	});
